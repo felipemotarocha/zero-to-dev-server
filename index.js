@@ -13,6 +13,13 @@ const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 
+// Routes
+const topicsRouter = require("./routes/topic/topic.routes");
+app.use("/api/topics", topicsRouter);
+
+const videosRouter = require("./routes/video/video.routes");
+app.use("/api/videos", videosRouter);
+
 // Initializing Server
 const port = process.env.PORT || 5000;
 app.listen(port, () => console.log(`Listening on port ${port}!`));
