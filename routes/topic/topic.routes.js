@@ -23,13 +23,24 @@ router.get("/:id/videos", async ({ params: { id } }, res) => {
 		}
 		// Populate will find every Videos which has the "topic" field equal to the received Topic ID.
 		await topic.populate("videos").execPopulate();
-		res.status(200).send(topic.videos);
+
+		// Sorting the videos.
+		// We are doing that because in the Front-End we need to show the videos in the order the user needs to watch them.
+		const sortedTopicVideos = topic.videos.sort(function (a, b) {
+			// Since the video titles are "Aula #01", "Aula #02" and so on we are splitting it to only get the class number (01, 02).
+			// It's important to know that those classes titles are a pattern and you must use it to don't break the app.
+			var textA = a.title.split("#")[1];
+			var textB = b.title.split("#")[1];
+			return textA < textB ? -1 : textA > textB ? 1 : 0;
+		});
+
+		res.status(200).send(sortedTopicVideos);
 	} catch (error) {
 		res.status(500).send(error.message);
 	}
 });
 
-router.post("/", async ({ body: { title } }, res) => {
+router.post("/", async ({ body: { title, image } }, res) => {
 	try {
 		// Checking if the topic already exists in the database.
 		const existentTopic = await Topic.findOne({ title });
@@ -37,7 +48,7 @@ router.post("/", async ({ body: { title } }, res) => {
 			throw new Error("This topic already exists in the database.");
 		}
 		// Creating the Topic.
-		const createdTopic = new Topic({ title });
+		const createdTopic = new Topic({ title, image });
 		await createdTopic.save();
 		res.status(200).send(createdTopic);
 	} catch (error) {
