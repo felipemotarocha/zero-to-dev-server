@@ -34,7 +34,7 @@ router.get("/:id/videos", async ({ params: { id } }, res) => {
 			return textA < textB ? -1 : textA > textB ? 1 : 0;
 		});
 
-		res.status(200).send(sortedTopicVideos);
+		res.status(200).send({ topic, videos: sortedTopicVideos });
 	} catch (error) {
 		res.status(500).send(error.message);
 	}
