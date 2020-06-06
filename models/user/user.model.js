@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
 
 const userSchema = new mongoose.Schema({
 	name: {
@@ -12,8 +13,21 @@ const userSchema = new mongoose.Schema({
 	},
 	password: {
 		type: String,
-		required: true,
 	},
+	profileImage: {
+		type: String,
+	},
+	googleId: {
+		type: String,
+	},
+	tokens: [
+		{
+			token: {
+				type: String,
+				required: true,
+			},
+		},
+	],
 });
 
 userSchema.virtual("notes", {
@@ -23,7 +37,7 @@ userSchema.virtual("notes", {
 });
 
 userSchema.statics.findByCredentials = async (email, password) => {
-	const user = await User.find({ email });
+	const user = await User.findOne({ email });
 
 	// Checking if the user was found.
 	if (!user) {
@@ -43,11 +57,28 @@ userSchema.statics.findByCredentials = async (email, password) => {
 	return user;
 };
 
+userSchema.methods.generateAuthToken = async function () {
+	// this = user
+
+	// Creating the token using the secret key
+	const token = jwt.sign(
+		{ _id: this._id.toString() },
+		process.env.JWT_SECRET_KEY
+	);
+
+	// Adding the generated token to the user tokens array
+	this.tokens = this.tokens.concat({ token });
+	await this.save();
+
+	return token;
+};
+
 userSchema.pre("save", async function (next) {
 	// this = user that is being saved.
 
 	// Checking if the user password has more than 7 characters
-	if (this.password.length < 7) {
+	// Note: the user just has a password if he is not signing in with Google
+	if (!this.googleId && this.password.length < 7) {
 		throw new Error("The password must contain at least 7 characters.");
 	}
 

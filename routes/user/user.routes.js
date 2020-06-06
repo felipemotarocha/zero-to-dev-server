@@ -1,5 +1,6 @@
 const express = require("express");
 const validator = require("validator");
+const auth = require("../../middlewares/auth/auth.middleware");
 const User = require("../../models/user/user.model");
 const Note = require("../../models/note/note.model");
 
@@ -14,8 +15,17 @@ router.get("/", async (req, res) => {
 	}
 });
 
-router.post("/", async ({ body: { name, email, password } }, res) => {
+router.get("/me", auth, async (req, res) => {
 	try {
+		res.status(200).send(req.user);
+	} catch (error) {
+		res.status(500).send(error.message);
+	}
+});
+
+router.post("/", async ({ body }, res) => {
+	try {
+		const { name, email, password } = body;
 		// Checking if the user email is already being used
 		const isEmailUnavailable = await User.findOne({ email });
 		if (isEmailUnavailable) {
@@ -28,10 +38,57 @@ router.post("/", async ({ body: { name, email, password } }, res) => {
 		}
 
 		// Creating the user
-		const user = new User({ name, email, password });
+		const user = new User(body);
+		const token = await user.generateAuthToken();
 		await user.save();
 
-		res.status(201).send(user);
+		res.status(201).send({ user, token });
+	} catch (error) {
+		res.status(500).send(error.message);
+	}
+});
+
+router.post("/login", async ({ body: { email, password } }, res) => {
+	try {
+		const user = await User.findByCredentials(email, password);
+		const token = await user.generateAuthToken();
+		res.status(200).send({ user, token });
+	} catch (error) {
+		res.status(500).send(error.message);
+	}
+});
+
+router.post(
+	"/oauth/google",
+	async ({ body: { email, name, googleId, profileImage } }, res) => {
+		try {
+			const foundUser = await User.findOne({ email });
+			// User doesn't have an account
+			if (!foundUser) {
+				const newUser = new User({ googleId, email, name, profileImage });
+				const token = await newUser.generateAuthToken();
+				res.status(200).send({ user: newUser, token });
+				return;
+			}
+			// User already has an account
+			if (!foundUser.googleId) {
+				foundUser.googleId = googleId;
+				await foundUser.save();
+			}
+			const token = await foundUser.generateAuthToken();
+			res.status(200).send({ user: foundUser, token });
+		} catch (err) {
+			res.status(500).send(err.message);
+		}
+	}
+);
+
+router.post("/logout", auth, async (req, res) => {
+	try {
+		const { user } = req;
+		user.tokens = user.tokens.filter((token) => token.token !== req.token);
+		await user.save();
+		res.status(200).send(req.user);
 	} catch (error) {
 		res.status(500).send(error.message);
 	}
@@ -59,7 +116,7 @@ router.patch("/:id", async ({ body, params: { id } }, res) => {
 	}
 });
 
-router.delete("/:id", async ({ body, params: { id } }, res) => {
+router.delete("/:id", async ({ params: { id } }, res) => {
 	try {
 		const deletedUser = await User.findByIdAndDelete(id);
 		// Deleting the user notes

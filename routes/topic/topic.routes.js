@@ -13,6 +13,21 @@ router.get("/", async (req, res) => {
 	}
 });
 
+router.get("/all/with-videos", async (req, res) => {
+	try {
+		const topics = await Topic.find({});
+		const topicsWithVideos = await Promise.all(
+			topics.map(async (topic) => {
+				await topic.populate("videos").execPopulate();
+				return { topic, videos: topic.videos };
+			})
+		);
+		res.status(200).send(topicsWithVideos);
+	} catch (error) {
+		res.status(500).send(error.message);
+	}
+});
+
 router.get("/:id/videos", async ({ params: { id } }, res) => {
 	try {
 		const topic = await Topic.findById(id);
