@@ -1,6 +1,7 @@
 const express = require("express");
 const Topic = require("../../models/topic/topic.model");
 const Video = require("../../models/video/video.model");
+const { sortVideosAlphabetically } = require("../../utils/video/video.utils");
 
 const router = new express.Router();
 
@@ -13,12 +14,15 @@ router.get("/", async (req, res) => {
 	}
 });
 
-router.get("/all/with-videos", async (req, res) => {
+router.get("/all/with-videos", async ({ query: { sort } }, res) => {
 	try {
 		const topics = await Topic.find({});
 		const topicsWithVideos = await Promise.all(
 			topics.map(async (topic) => {
 				await topic.populate("videos").execPopulate();
+				if (sort === "alphabetically") {
+					return { topic, videos: sortVideosAlphabetically(topic.videos) };
+				}
 				return { topic, videos: topic.videos };
 			})
 		);
@@ -28,7 +32,7 @@ router.get("/all/with-videos", async (req, res) => {
 	}
 });
 
-router.get("/:id/videos", async ({ params: { id } }, res) => {
+router.get("/:id/videos", async ({ params: { id }, query: { sort } }, res) => {
 	try {
 		const topic = await Topic.findById(id);
 		if (!topic) {
@@ -36,20 +40,17 @@ router.get("/:id/videos", async ({ params: { id } }, res) => {
 				"This topic does not exist. Change the topic field and try again."
 			);
 		}
-		// Populate will find every Videos which has the "topic" field equal to the received Topic ID.
+		// Populate will find every Videos which has the "topic" field equal to the received Topic ID
 		await topic.populate("videos").execPopulate();
 
-		// Sorting the videos.
-		// We are doing that because in the Front-End we need to show the videos in the order the user needs to watch them.
-		const sortedTopicVideos = topic.videos.sort(function (a, b) {
-			// Since the video titles are "Aula #01", "Aula #02" and so on we are splitting it to only get the class number (01, 02).
-			// It's important to know that those classes titles are a pattern and you must use it to don't break the app.
-			var textA = a.title.split("#")[1];
-			var textB = b.title.split("#")[1];
-			return textA < textB ? -1 : textA > textB ? 1 : 0;
-		});
+		// Sorting the videos if requested
+		if (sort === "alphabetically") {
+			const sortedTopicVideos = sortVideosAlphabetically(topic.videos);
+			res.status(200).send({ topic, videos: sortedTopicVideos });
+			return;
+		}
 
-		res.status(200).send({ topic, videos: sortedTopicVideos });
+		res.status(200).send({ topic, videos: topic.videos });
 	} catch (error) {
 		res.status(500).send(error.message);
 	}
@@ -81,8 +82,8 @@ router.patch("/:id", async ({ body, params }, res) => {
 		const allowedUpdates = ["title"];
 		const requestedUpdates = Object.keys(body);
 
-		// Checking if the requested updates matches with the allowed updates.
-		// If it matches, then update the field in the database. If not, don't do anything.
+		// Checking if the requested updates matches with the allowed updates
+		// If it matches, then update the field in the database. If not, don't do anything
 		for (update of requestedUpdates) {
 			if (allowedUpdates.includes(update)) {
 				topicToUpdate[update] = body[update];
@@ -99,11 +100,11 @@ router.patch("/:id", async ({ body, params }, res) => {
 router.delete("/:id", async ({ params: { id } }, res) => {
 	try {
 		const deletedTopic = await Topic.findByIdAndDelete(id);
-		// Throw an error if the topic wasn't found.
+		// Throw an error if the topic wasn't found
 		if (!deletedTopic) {
 			throw new Error("This topics does not exist.");
 		}
-		// Deleting the Topic Videos.
+		// Deleting the Topic Videos
 		const deletedTopicVideos = await Video.find({ topic: id });
 		await Video.deleteMany({ topic: id });
 

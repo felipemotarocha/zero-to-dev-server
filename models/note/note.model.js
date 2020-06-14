@@ -10,10 +10,12 @@ const noteSchema = new mongoose.Schema({
 		required: true,
 	},
 	video: {
-		type: mongoose.Schema.Types.ObjectId,
+		type: String,
+		required: true,
 	},
 	owner: {
 		type: mongoose.Schema.Types.ObjectId,
+		required: true,
 	},
 });
 

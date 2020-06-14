@@ -1,6 +1,7 @@
 const express = require("express");
 const Video = require("../../models/video/video.model");
 const Topic = require("../../models/topic/topic.model");
+const Note = require("../../models/note/note.model");
 
 const router = new express.Router();
 
@@ -13,24 +14,27 @@ router.get("/", async (req, res) => {
 	}
 });
 
-router.post("/", async ({ body: { title, author, url, topic } }, res) => {
-	try {
-		// Checking if the passed topic already exists in the database.
-		// This is important to check because the Video needs to have a valid Topic ID.
-		const doesTopicExist = await Topic.findById(topic);
-		if (!doesTopicExist) {
-			throw new Error(
-				"The inserted topic does not exist. Change the topic field and try again."
-			);
+router.post(
+	"/",
+	async ({ body: { title, author, url, order, topic } }, res) => {
+		try {
+			// Checking if the passed topic already exists in the database.
+			// This is important to check because the Video needs to have a valid Topic ID.
+			const doesTopicExist = await Topic.findById(topic);
+			if (!doesTopicExist) {
+				throw new Error(
+					"The inserted topic does not exist. Change the topic field and try again."
+				);
+			}
+			// Creating the the new Video
+			const createdVideo = new Video({ title, author, url, order, topic });
+			await createdVideo.save();
+			res.status(200).send(createdVideo);
+		} catch (error) {
+			res.status(500).send(error.message);
 		}
-		// Creating the the new Video
-		const createdVideo = new Video({ title, author, url, topic });
-		await createdVideo.save();
-		res.status(200).send(createdVideo);
-	} catch (error) {
-		res.status(500).send(error.message);
 	}
-});
+);
 
 router.patch("/:id", async ({ body, params: { id } }, res) => {
 	try {
@@ -59,9 +63,11 @@ router.patch("/:id", async ({ body, params: { id } }, res) => {
 
 router.delete("/:id", async ({ params: { id } }, res) => {
 	try {
-		const videoToDelete = await Video.findById(id);
-		await videoToDelete.save();
-		res.status(200).send(videoToDelete);
+		const videoToDelete = await Video.findByIdAndDelete(id);
+		const notesToDelete = await Note.deleteMany({ video: id });
+		res
+			.status(200)
+			.send({ deletedVideo: videoToDelete, deletedNotes: notesToDelete });
 	} catch (error) {
 		res.status(500).send(error.message);
 	}

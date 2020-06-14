@@ -16,6 +16,10 @@ const videoSchema = new mongoose.Schema({
 	videoId: {
 		type: String,
 	},
+	order: {
+		type: Number,
+		required: true,
+	},
 	topic: {
 		type: mongoose.Schema.Types.ObjectId,
 		required: true,
