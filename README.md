@@ -50,7 +50,7 @@ Create an `.env` file in the `root` directory with the following values:
 
 # Notes On The Database 📁
 
-I provided the password of the `guest` user of the database, so you can only **read the data (of all databases) and insert data in users and notes databases**. With this you have everything that you need to make the application works.
+I provided the password of the `guest` user of the database, so you can only **read the data (of all databases) and insert data in users and notes databases**. With this, you have everything that you need to make the application works.
 
 # Technologies Used 🛠
 
@@ -59,7 +59,7 @@ I provided the password of the `guest` user of the database, so you can only **r
 
 # Some Functionalities ⚙️
 
--   User authentication system with JWT and Google OAuth.
+-   User authentication system with JWT and Google OAuth
 
 # Client Side Code 💻
 
